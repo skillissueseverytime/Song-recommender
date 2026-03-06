@@ -172,8 +172,14 @@ def get_spotify():
     client_id = str(client_id).strip()
     client_secret = str(client_secret).strip()
 
-    # Do not cache this, to prevent stale tokens across Streamlit reruns
-    auth = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+    from spotipy.cache_handler import MemoryCacheHandler
+    
+    # Do not cache this on disk, to prevent stale tokens across Streamlit reruns
+    auth = SpotifyClientCredentials(
+        client_id=client_id, 
+        client_secret=client_secret,
+        cache_handler=MemoryCacheHandler()
+    )
     return spotipy.Spotify(auth_manager=auth)
 
 @st.cache_data(show_spinner="Loading dataset...")
@@ -219,7 +225,7 @@ def recommend_from_vector(seed_vector, exclude_ids, top_n=10):
 def fetch_playlist_songs(playlist_id):
     """Fetch tracks from a Spotify playlist and match them to the dataset."""
     try:
-        results = sp.playlist_items(playlist_id)
+        results = sp.playlist_items(playlist_id, additional_types=("track",))
     except spotipy.exceptions.SpotifyException as e:
         import traceback
         st.error(f"❌ Detailed Spotify API Error for ID '{playlist_id}':")
