@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.pyc
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Large dataset files (too large for GitHub)
+dataset.csv
+
+# Generated CSV output files (runtime artifacts)
+filtered_playlist_songs.csv
+playlist_songs.csv
+best_recommendations.csv
+
+# Spotify auth cache
+.cache
+
+# Virtual environments
+venv/
+env/
+.env/
+
+# Environment variables (API keys)
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
