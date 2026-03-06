@@ -3,9 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from dotenv import load_dotenv
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
+
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -132,157 +130,118 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ── Load credentials & Spotify client ────────────────────────────────────────
-load_dotenv()
-
-def get_spotify():
-    client_id     = 'ab30884cbf2b41fda2e26aab4e3a7751'
-    client_secret = '06885b40fc684369a94080c5b1d87d45'
-    
-    from spotipy.cache_handler import MemoryCacheHandler
-    
-    # Do not cache this on disk, to prevent stale tokens across Streamlit reruns
-    auth = SpotifyClientCredentials(
-        client_id=client_id, 
-        client_secret=client_secret,
-        cache_handler=MemoryCacheHandler()
-    )
-    return spotipy.Spotify(auth_manager=auth)
-
+# ── Load dataset (same logic as notebook) ─────────────────────────────────────
 @st.cache_data(show_spinner="Loading dataset...")
 def load_dataset():
-    df = pd.read_csv("dataset.csv")
-    df["track_name"] = df["track_name"].str.lower()
-    df["album_name"] = df["album_name"].str.lower()
-    df["artists"]    = df["artists"].str.lower()
+    df = pd.read_csv("spotify_tracks.csv")
+    df["track_name"] = df["track_name"].str.lower().str.strip()
+    df["album_name"] = df["album_name"].str.lower().str.strip()
+    df["artist_name"] = df["artist_name"].str.lower().str.strip()
+    df["language"] = df["language"].str.lower().str.strip()
     df = df.drop_duplicates(subset=["track_id"])
     return df
 
-FEATURES = [
+# ── Features (same as notebook) ──────────────────────────────────────────────
+features = [
     "danceability", "energy", "loudness", "speechiness",
     "acousticness", "instrumentalness", "liveness", "valence", "tempo"
 ]
 
-sp = get_spotify()
 df = load_dataset()
-
-# ── Session State initialization for Single Song Search ──
-if "search_results" not in st.session_state:
-    st.session_state.search_results = None
-
-
-# ── Helper functions ──────────────────────────────────────────────────────────
-
-
-def recommend_from_vector(seed_vector, exclude_ids, top_n=10):
-    """Given a feature vector (1, 9), return top_n similar songs excluding seed."""
-    pool = df[~df["track_id"].isin(exclude_ids)].copy()
-    sims = cosine_similarity(seed_vector, pool[FEATURES].values)[0]
-    top_idx = np.argsort(sims)[::-1][:top_n]
-    results = pool.iloc[top_idx][["track_name", "artists", "album_name"]].copy()
-    results["similarity"] = sims[top_idx]
-    return results.reset_index(drop=True)
-
-
-
-
-
-def search_song(name, artist=""):
-    query = f"track:{name}"
-    if artist:
-        query += f" artist:{artist}"
-    res = sp.search(q=query, type="track", limit=5)
-    return res["tracks"]["items"]
-
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 st.markdown('<div class="badge">ML-Powered</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Song Recommender</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-sub">Discover music that matches your vibe using cosine similarity on Spotify audio features.</div>', unsafe_allow_html=True)
 
-# ───────────────── SINGLE SONG ─────────────────
+# ───────────────── SINGLE SONG SEARCH ─────────────────
 with st.container():
-    st.markdown("#### Search or paste a Track Link")
-    song_input = st.text_input("Song Name or Spotify URL", placeholder="e.g. Brown Munde OR https://open.spotify.com/track/...", label_visibility="collapsed")
-    
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        get_rec_click = st.button("Get Recommendations")
+    st.markdown("#### 🎵 Search for a Song")
+    song_input = st.text_input(
+        "Song name",
+        placeholder="e.g. kun faya kun",
+        label_visibility="collapsed"
+    )
+    artist_input = st.text_input(
+        "Artist name (optional)",
+        placeholder="Artist name (optional, press Enter to skip)",
+        label_visibility="collapsed"
+    )
 
-# If the user pasted a Spotify URL, bypass search and go straight to recommending
+    get_rec_click = st.button("Get Recommendations")
+
 if get_rec_click and song_input:
-    if "spotify.com/track/" in song_input:
-        track_id = song_input.strip()
-        with st.spinner("Finding similar songs..."):
-            try:
-                track_info = sp.track(track_id)
-                chosen_name = track_info["name"]
-                
-                matched = df[df["track_id"] == track_id]
-                if matched.empty:
-                    matched = df[df["track_name"] == chosen_name.lower()]
+    song_name = song_input.strip().lower()
+    artist_name = artist_input.strip().lower() if artist_input else ""
 
-                if matched.empty:
-                    st.warning(f"⚠️ **{chosen_name}** isn't in the local dataset. Try searching by name or pasting another song.")
-                else:
-                    seed_vector = matched.iloc[[0]][FEATURES].values
-                    recs = recommend_from_vector(seed_vector, [track_id])
-                    st.success(f"Top 10 songs similar to **{chosen_name}**")
-                    for i, row in recs.iterrows():
-                        st.markdown(f"""
-                        <div class="song-card">
-                            <span class="song-rank">{i+1}</span>&nbsp;&nbsp;
-                            <span class="song-name">{row['track_name'].title()}</span>
-                            <div class="song-artist" style="padding-left:2.5rem">
-                                {row['artists'].title()} &nbsp;·&nbsp; {row['album_name'].title()}
-                            </div>
-                        </div>""", unsafe_allow_html=True)
-            except Exception as e:
-                st.error("Invalid Spotify Track URL.")
-                    
-    # Otherwise, they entered a search querying text (e.g. "Brown Munde")
+    # ── Search logic (same as notebook) ───────────────────────────────────
+    if artist_name:
+        song_match = df[
+            (df["track_name"] == song_name) &
+            (df["artist_name"] == artist_name)
+        ]
     else:
-        with st.spinner("Searching Spotify..."):
-            # Clear previous search results so we do a fresh search
-            st.session_state.search_results = search_song(song_input)
-                
-# If we have search results stored in session state, display them so the user can pick
-if st.session_state.search_results is not None and "spotify.com/track/" not in str(song_input):
-    if len(st.session_state.search_results) == 0:
-        st.error("No song found. Try a different name.")
+        song_match = df[df["track_name"] == song_name]
+
+    if song_match.empty:
+        # Fallback: try partial match (same as notebook cell "single_song_pick")
+        song_match = df[df["track_name"].str.contains(song_name, na=False)]
+
+    if song_match.empty:
+        st.error("❌ Song not found in dataset. Try a different song.")
     else:
-        st.markdown("##### 🔍 Select the correct match:")
-        options = {
-            f"{t['name']} — {', '.join(a['name'] for a in t['artists'])}": t
-            for t in st.session_state.search_results
-        }
-        
-        chosen_label = st.selectbox("Select match", list(options.keys()), label_visibility="collapsed")
-        chosen = options[chosen_label]
-        chosen_id = chosen["id"]
-        chosen_name = chosen["name"]
+        chosen_song = song_match.iloc[0]
+        chosen_track_id = chosen_song["track_id"]
+        chosen_track_name = chosen_song["track_name"]
 
-        if st.button("Confirm & Recommend", type="primary"):
-            with st.spinner("Finding similar songs..."):
-                matched = df[df["track_id"] == chosen_id]
-                if matched.empty:
-                    matched = df[df["track_name"] == chosen_name.lower()]
+        # ── Match by track_id (same as notebook) ─────────────────────────
+        matched = df[df["track_id"] == chosen_track_id]
 
-                if matched.empty:
-                    st.warning("⚠️ This song isn't in the local dataset. Try another.")
-                else:
-                    seed_vector = matched.iloc[[0]][FEATURES].values
-                    recs = recommend_from_vector(seed_vector, [chosen_id])
+        if matched.empty:
+            matched = df[df["track_name"].str.lower() == chosen_track_name.lower()]
 
-                    st.success(f"Top 10 songs similar to **{chosen_name}**")
-                    st.divider()
-                    for i, row in recs.iterrows():
-                        st.markdown(f"""
-                        <div class="song-card">
-                            <span class="song-rank">{i+1}</span>&nbsp;&nbsp;
-                            <span class="song-name">{row['track_name'].title()}</span>
-                            <div class="song-artist" style="padding-left:2.5rem">
-                                {row['artists'].title()} &nbsp;·&nbsp; {row['album_name'].title()}
-                            </div>
-                        </div>""", unsafe_allow_html=True)
+        if matched.empty:
+            st.warning("⚠️ Song not in dataset. Try a different song.")
+        else:
+            st.success(
+                f"✅ Found: **{matched.iloc[0]['track_name'].title()}** — "
+                f"{matched.iloc[0]['artist_name'].title()}"
+            )
 
+            # ── Recommend (same as notebook) ─────────────────────────────
+            song_vector = matched.iloc[[0]][features].values
+            song_language = matched.iloc[0]["language"]
+
+            # Filter by same language
+            filtered_df = df[df["language"] == song_language]
+
+            # Exclude the chosen song itself
+            other_songs = filtered_df[
+                filtered_df["track_name"] != matched.iloc[0]["track_name"]
+            ].copy()
+
+            other_features = other_songs[features].values
+
+            sim_scores = cosine_similarity(song_vector, other_features)[0]
+
+            top_idx = np.argsort(sim_scores)[::-1][1:11]
+
+            recommendations = other_songs.iloc[top_idx][
+                ["track_name", "artist_name", "album_name"]
+            ].drop_duplicates(subset=["track_name"]).head(10).reset_index(drop=True)
+
+            st.markdown(
+                f"#### 🎧 Top 10 songs similar to "
+                f"'{chosen_track_name.title()}' ({song_language})"
+            )
+            st.divider()
+
+            for i, row in recommendations.iterrows():
+                st.markdown(f"""
+                <div class="song-card">
+                    <span class="song-rank">{i+1}</span>&nbsp;&nbsp;
+                    <span class="song-name">{row['track_name'].title()}</span>
+                    <div class="song-artist" style="padding-left:2.5rem">
+                        {row['artist_name'].title()} &nbsp;·&nbsp; {row['album_name'].title()}
+                    </div>
+                </div>""", unsafe_allow_html=True)
