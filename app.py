@@ -210,21 +210,9 @@ if "search_results" not in st.session_state:
 # ── Helper functions ──────────────────────────────────────────────────────────
 def extract_id_from_url(url, type_of_id="playlist"):
     """
-    Extracts the Spotify ID from a URL or raw ID string.
-    type_of_id should be 'playlist' or 'track'
+    Returns the exact ID the user pasted, trimming whitespace only.
     """
-    url = url.strip()
-    if not url:
-        return ""
-    
-    # If they pasted a full URL
-    if type_of_id in url:
-        # e.g. "https://open.spotify.com/playlist/7zXhVA..."
-        url = url.split(f"{type_of_id}/")[-1]
-        
-    # Now URL is just the ID onwards. Strip out query parameters and anything else
-    url = url.split("?")[0].split("&")[0].split("/")[0].strip()
-    return url
+    return url.strip()
 
 
 def recommend_from_vector(seed_vector, exclude_ids, top_n=10):
