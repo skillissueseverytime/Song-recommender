@@ -176,11 +176,13 @@ def get_spotify():
     try:
         auth = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
         sp = spotipy.Spotify(auth_manager=auth)
-        # Verify it works (makes a dummy request behind the scenes sometimes, not strictly needed, 
-        # but the object gets created)
+        # Try a dummy request to force authentication right now rather than later
+        sp.search(q="test", limit=1)
         return sp
     except Exception as e:
-        st.error(f"❌ Failed to connect to Spotify. Are your keys valid? Error: {str(e)}")
+        import traceback
+        st.error(f"❌ Failed to connect to Spotify. Are your keys valid?")
+        st.code(traceback.format_exc(), language="python")
         st.stop()
 
 @st.cache_data(show_spinner="Loading dataset...")
