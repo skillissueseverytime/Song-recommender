@@ -157,13 +157,31 @@ load_dotenv()
 
 @st.cache_resource
 def get_spotify():
-    client_id     = os.getenv("SPOTIFY_CLIENT_ID")
+    # Try fetching from os.environ first, then fallback to Streamlit secrets
+    client_id = os.getenv("SPOTIFY_CLIENT_ID")
+    if not client_id and "SPOTIFY_CLIENT_ID" in st.secrets:
+        client_id = st.secrets["SPOTIFY_CLIENT_ID"]
+
     client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
+    if not client_secret and "SPOTIFY_CLIENT_SECRET" in st.secrets:
+        client_secret = st.secrets["SPOTIFY_CLIENT_SECRET"]
+
     if not client_id or not client_secret:
-        st.error("❌ SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET not found in .env")
+        st.error("❌ API Keys missing! Please add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to Streamlit Secrets.")
         st.stop()
-    auth = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-    return spotipy.Spotify(auth_manager=auth)
+        
+    client_id = str(client_id).strip()
+    client_secret = str(client_secret).strip()
+
+    try:
+        auth = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+        sp = spotipy.Spotify(auth_manager=auth)
+        # Verify it works (makes a dummy request behind the scenes sometimes, not strictly needed, 
+        # but the object gets created)
+        return sp
+    except Exception as e:
+        st.error(f"❌ Failed to connect to Spotify. Are your keys valid? Error: {str(e)}")
+        st.stop()
 
 @st.cache_data(show_spinner="Loading dataset...")
 def load_dataset():
