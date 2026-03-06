@@ -150,6 +150,69 @@ features = [
 
 df = load_dataset()
 
+# ── Session state defaults ───────────────────────────────────────────────────
+if "picked_suggestion" not in st.session_state:
+    st.session_state["picked_suggestion"] = None
+if "fuzzy_suggestions" not in st.session_state:
+    st.session_state["fuzzy_suggestions"] = None
+
+# ── Helper: show recommendations ─────────────────────────────────────────────
+def show_recommendations(song_name_in_df):
+    """Given an exact track_name from the dataframe, display recommendations."""
+    matched = df[df["track_name"] == song_name_in_df]
+    if matched.empty:
+        st.warning("⚠️ Song not in dataset. Try a different song.")
+        return
+
+    chosen_track_name = matched.iloc[0]["track_name"]
+
+    st.success(
+        f"✅ Found: **{matched.iloc[0]['track_name'].title()}** — "
+        f"{matched.iloc[0]['artist_name'].title()}"
+    )
+
+    # ── Recommend (same as notebook) ─────────────────────────────
+    song_vector = matched.iloc[[0]][features].values
+    song_language = matched.iloc[0]["language"]
+
+    # Filter by same language
+    filtered_df = df[df["language"] == song_language]
+
+    # Exclude the chosen song by track_id and any name variants
+    input_base_name = matched.iloc[0]["track_name"].split("(")[0].strip()
+    other_songs = filtered_df[
+        (filtered_df["track_id"] != matched.iloc[0]["track_id"]) &
+        (~filtered_df["track_name"].str.startswith(input_base_name, na=False))
+    ].copy()
+
+    other_features = other_songs[features].values
+    sim_scores = cosine_similarity(song_vector, other_features)[0]
+
+    top_idx = np.argsort(sim_scores)[::-1][:30]
+
+    candidates = other_songs.iloc[top_idx][
+        ["track_name", "artist_name", "album_name"]
+    ].copy()
+    candidates["_base_name"] = candidates["track_name"].str.split("(").str[0].str.strip()
+    recommendations = candidates.drop_duplicates(subset=["_base_name"]).drop(columns=["_base_name"]).head(10).reset_index(drop=True)
+
+    st.markdown(
+        f"#### 🎧 Top 10 songs similar to "
+        f"'{chosen_track_name.title()}' ({song_language})"
+    )
+    st.divider()
+
+    for i, row in recommendations.iterrows():
+        st.markdown(f"""
+        <div class="song-card">
+            <span class="song-rank">{i+1}</span>&nbsp;&nbsp;
+            <span class="song-name">{row['track_name'].title()}</span>
+            <div class="song-artist" style="padding-left:2.5rem">
+                {row['artist_name'].title()} &nbsp;·&nbsp; {row['album_name'].title()}
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+
 # ── UI ────────────────────────────────────────────────────────────────────────
 st.markdown('<div class="badge">ML-Powered</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Song Recommender</div>', unsafe_allow_html=True)
@@ -171,7 +234,12 @@ with st.container():
 
     get_rec_click = st.button("Get Recommendations")
 
+# ── When user clicks "Get Recommendations" ────────────────────────────────────
 if get_rec_click and song_input:
+    # Clear previous state for a fresh search
+    st.session_state["picked_suggestion"] = None
+    st.session_state["fuzzy_suggestions"] = None
+
     song_name = song_input.strip().lower()
     artist_name = artist_input.strip().lower() if artist_input else ""
 
@@ -185,84 +253,32 @@ if get_rec_click and song_input:
         song_match = df[df["track_name"] == song_name]
 
     if song_match.empty:
-        # Fallback: try partial match (same as notebook cell "single_song_pick")
+        # Fallback: try partial match
         song_match = df[df["track_name"].str.contains(song_name, na=False)]
 
     if song_match.empty:
         # ── "Did you mean?" fuzzy suggestions ─────────────────────────
         all_names = df["track_name"].unique().tolist()
         suggestions = get_close_matches(song_name, all_names, n=5, cutoff=0.5)
-
         if suggestions:
-            st.warning("⚠️ Song not found. Did you mean one of these?")
-            for idx, s in enumerate(suggestions):
-                artist = df[df["track_name"] == s].iloc[0]["artist_name"]
-                if st.button(f"🎵 {s.title()} — {artist.title()}", key=f"suggest_{idx}"):
-                    st.session_state["picked_suggestion"] = s
-                    st.rerun()
+            st.session_state["fuzzy_suggestions"] = suggestions
         else:
             st.error("❌ Song not found in dataset. Try a different name.")
     else:
+        # Direct match found → show recommendations immediately
         st.session_state["picked_suggestion"] = song_match.iloc[0]["track_name"]
+        st.rerun()
 
-# ── Handle picked song (from search or suggestion click) ─────────────────
-picked = st.session_state.get("picked_suggestion", None)
-if picked:
-    matched = df[df["track_name"] == picked]
+# ── Show fuzzy suggestion buttons (persists across reruns) ────────────────────
+if st.session_state["fuzzy_suggestions"] and not st.session_state["picked_suggestion"]:
+    st.warning("⚠️ Song not found. Did you mean one of these?")
+    for idx, s in enumerate(st.session_state["fuzzy_suggestions"]):
+        artist = df[df["track_name"] == s].iloc[0]["artist_name"]
+        if st.button(f"🎵 {s.title()} — {artist.title()}", key=f"suggest_{idx}"):
+            st.session_state["picked_suggestion"] = s
+            st.session_state["fuzzy_suggestions"] = None
+            st.rerun()
 
-    if matched.empty:
-        st.warning("⚠️ Song not in dataset. Try a different song.")
-    else:
-        chosen_track_id = matched.iloc[0]["track_id"]
-        chosen_track_name = matched.iloc[0]["track_name"]
-
-        st.success(
-            f"✅ Found: **{matched.iloc[0]['track_name'].title()}** — "
-            f"{matched.iloc[0]['artist_name'].title()}"
-        )
-
-        # ── Recommend (same as notebook) ─────────────────────────────
-        song_vector = matched.iloc[[0]][features].values
-        song_language = matched.iloc[0]["language"]
-
-        # Filter by same language
-        filtered_df = df[df["language"] == song_language]
-
-        # Exclude the chosen song by track_id and any name variants
-        input_base_name = matched.iloc[0]["track_name"].split("(")[0].strip()
-        other_songs = filtered_df[
-            (filtered_df["track_id"] != matched.iloc[0]["track_id"]) &
-            (~filtered_df["track_name"].str.startswith(input_base_name, na=False))
-        ].copy()
-
-        other_features = other_songs[features].values
-
-        sim_scores = cosine_similarity(song_vector, other_features)[0]
-
-        top_idx = np.argsort(sim_scores)[::-1][:30]
-
-        candidates = other_songs.iloc[top_idx][
-            ["track_name", "artist_name", "album_name"]
-        ].copy()
-        # Normalize track names for dedup (strip parenthetical suffixes)
-        candidates["_base_name"] = candidates["track_name"].str.split("(").str[0].str.strip()
-        recommendations = candidates.drop_duplicates(subset=["_base_name"]).drop(columns=["_base_name"]).head(10).reset_index(drop=True)
-
-        st.markdown(
-            f"#### 🎧 Top 10 songs similar to "
-            f"'{chosen_track_name.title()}' ({song_language})"
-        )
-        st.divider()
-
-        for i, row in recommendations.iterrows():
-            st.markdown(f"""
-            <div class="song-card">
-                <span class="song-rank">{i+1}</span>&nbsp;&nbsp;
-                <span class="song-name">{row['track_name'].title()}</span>
-                <div class="song-artist" style="padding-left:2.5rem">
-                    {row['artist_name'].title()} &nbsp;·&nbsp; {row['album_name'].title()}
-                </div>
-            </div>""", unsafe_allow_html=True)
-
-        # Clear the picked suggestion so next search starts fresh
-        st.session_state["picked_suggestion"] = None
+# ── Show recommendations for picked song ─────────────────────────────────────
+if st.session_state["picked_suggestion"]:
+    show_recommendations(st.session_state["picked_suggestion"])
