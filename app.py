@@ -217,10 +217,6 @@ def extract_id_from_url(url, type_of_id="playlist"):
     if not url:
         return ""
     
-    # Check if it's already just an ID (no slashes)
-    if "/" not in url and "?" not in url:
-        return url
-        
     # Example URL: https://open.spotify.com/playlist/7zX...
     # Example URL: https://open.spotify.com/track/0XwR...
     pattern = rf"spotify\.com/{type_of_id}/([a-zA-Z0-9]+)"
@@ -228,7 +224,10 @@ def extract_id_from_url(url, type_of_id="playlist"):
     if match:
         return match.group(1)
         
-    return url # Fallback to raw input
+    # If it's just a raw ID like 1y1JSEK3NVTzdM5YSed53Q or 1y1JSEK3NVTzdM5YSed53Q?si=...
+    # Strip any parameters after '?' or spaces
+    url = url.split("?")[0].split(" ")[0]
+    return url
 
 
 def recommend_from_vector(seed_vector, exclude_ids, top_n=10):
@@ -243,7 +242,14 @@ def recommend_from_vector(seed_vector, exclude_ids, top_n=10):
 
 def fetch_playlist_songs(playlist_id):
     """Fetch tracks from a Spotify playlist and match them to the dataset."""
-    results = sp.playlist_items(playlist_id)
+    try:
+        results = sp.playlist_items(playlist_id)
+    except spotipy.exceptions.SpotifyException as e:
+        if e.http_status == 404:
+            raise ValueError("Playlist not found! Make sure the playlist is PUBLIC, not private.")
+        else:
+            raise ValueError(f"Spotify API Error: {e.msg}")
+            
     songs = []
     for item in results["items"]:
         track = item.get("item")
@@ -255,6 +261,10 @@ def fetch_playlist_songs(playlist_id):
                 "artists":    artists.lower(),
                 "track_id":   track["id"],
             })
+    
+    if not songs:
+        return pd.DataFrame(), pd.DataFrame()
+        
     playlist_df = pd.DataFrame(songs)
 
     # Filter: only tracks present in dataset
