@@ -1,13 +1,20 @@
 # Song Recommendation System using ML
 
-A machine learning-based song recommendation system that analyzes your Spotify playlist and recommends songs with similar audio features from a large dataset.
+A machine learning-based song recommendation system that recommends songs based on audio features — either from your **Spotify playlist** or a **single song**.
 
-## 🎵 How It Works
+## 🎵 Two Modes
 
-1. **Fetches your Spotify playlist** using the Spotify Web API (`spotipy`)
-2. **Matches songs** from the playlist to a dataset with audio features
-3. **Computes cosine similarity** between your playlist's average audio profile and every song in the dataset
-4. **Recommends the top 10 songs** most similar to your taste
+### 1. Playlist Mode
+1. Fetches your Spotify playlist via the Spotify Web API (`spotipy`)
+2. Matches playlist songs to a dataset with audio features
+3. Computes the average audio profile of your playlist
+4. Returns the **top 10 songs** most similar to your playlist vibe
+
+### 2. Single Song Mode
+1. You type any song name (and optionally artist)
+2. The app searches Spotify and finds the track in the dataset
+3. Computes cosine similarity between that song and the entire dataset
+4. Returns the **top 10 songs** most similar to that one song
 
 ## 🔧 Audio Features Used
 
