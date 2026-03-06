@@ -155,7 +155,6 @@ st.markdown("""
 # ── Load credentials & Spotify client ────────────────────────────────────────
 load_dotenv()
 
-@st.cache_resource
 def get_spotify():
     # Try fetching from os.environ first, then fallback to Streamlit secrets
     client_id = os.getenv("SPOTIFY_CLIENT_ID")
@@ -173,17 +172,9 @@ def get_spotify():
     client_id = str(client_id).strip()
     client_secret = str(client_secret).strip()
 
-    try:
-        auth = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-        sp = spotipy.Spotify(auth_manager=auth)
-        # Try a dummy request to force authentication right now rather than later
-        sp.search(q="test", limit=1)
-        return sp
-    except Exception as e:
-        import traceback
-        st.error(f"❌ Failed to connect to Spotify. Are your keys valid?")
-        st.code(traceback.format_exc(), language="python")
-        st.stop()
+    # Do not cache this, to prevent stale tokens across Streamlit reruns
+    auth = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+    return spotipy.Spotify(auth_manager=auth)
 
 @st.cache_data(show_spinner="Loading dataset...")
 def load_dataset():
