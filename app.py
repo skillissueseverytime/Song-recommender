@@ -26,6 +26,13 @@ st.markdown("""
         color: #ffffff;
     }
 
+    /* Center the main content */
+    .block-container {
+        max-width: 700px !important;
+        margin: 0 auto;
+        padding-top: 3rem !important;
+    }
+
     /* Song result card */
     .song-card {
         background: #0a0a0a;
@@ -65,12 +72,14 @@ st.markdown("""
         font-weight: 700;
         color: #ffffff;
         line-height: 1.2;
+        text-align: center;
     }
     .hero-sub {
         color: #888888;
         font-size: 1.05rem;
         margin-top: 0.4rem;
         margin-bottom: 1.5rem;
+        text-align: center;
     }
 
 
@@ -126,6 +135,20 @@ st.markdown("""
         margin-bottom: 1.2rem;
         letter-spacing: 0.05em;
         text-transform: uppercase;
+    }
+
+    .badge-center {
+        text-align: center;
+    }
+
+    /* Center the Get Recommendations button */
+    .stButton {
+        display: flex;
+        justify-content: center;
+    }
+    .stButton > button {
+        width: auto;
+        min-width: 250px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -214,7 +237,7 @@ def show_recommendations(song_name_in_df):
 
 
 # ── UI ────────────────────────────────────────────────────────────────────────
-st.markdown('<div class="badge">ML-Powered</div>', unsafe_allow_html=True)
+st.markdown('<div class="badge-center"><span class="badge">ML-Powered</span></div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Song Recommender</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-sub">Discover music that matches your vibe using cosine similarity on Spotify audio features.</div>', unsafe_allow_html=True)
 

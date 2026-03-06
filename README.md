@@ -1,63 +1,72 @@
-# Song Recommendation System using ML
+# 🎵 Song Recommender
 
-A machine learning-based song recommendation system that recommends songs based on audio features — either from your **Spotify playlist** or a **single song**.
+A machine learning-based song recommendation system that suggests similar songs based on audio features using **cosine similarity**.
 
-## 🎵 Two Modes
+🔗 **Live Demo:** [recommend-me-some.streamlit.app](https://recommend-me-some.streamlit.app)
 
-### 1. Playlist Mode
-1. Fetches your Spotify playlist via the Spotify Web API (`spotipy`)
-2. Matches playlist songs to a dataset with audio features
-3. Computes the average audio profile of your playlist
-4. Returns the **top 10 songs** most similar to your playlist vibe
+## How It Works
 
-### 2. Single Song Mode
-1. You type any song name (and optionally artist)
-2. The app searches Spotify and finds the track in the dataset
-3. Computes cosine similarity between that song and the entire dataset
-4. Returns the **top 10 songs** most similar to that one song
+1. Enter a song name (and optionally an artist name)
+2. The app finds the song in the dataset
+3. Filters songs by the **same language**
+4. Computes **cosine similarity** on 9 audio features
+5. Returns the **top 10 most similar songs**
+
+### 🔍 Fuzzy Search
+
+Misspelled the song name? No problem — the app suggests close matches using fuzzy matching so you can pick the right one.
 
 ## 🔧 Audio Features Used
 
-- Danceability
-- Energy
-- Loudness
-- Speechiness
-- Acousticness
-- Instrumentalness
-- Liveness
-- Valence
-- Tempo
+| Feature | Description |
+|---------|-------------|
+| Danceability | How suitable a track is for dancing |
+| Energy | Intensity and activity level |
+| Loudness | Overall loudness in dB |
+| Speechiness | Presence of spoken words |
+| Acousticness | Whether the track is acoustic |
+| Instrumentalness | Whether the track has no vocals |
+| Liveness | Presence of a live audience |
+| Valence | Musical positiveness (happy vs sad) |
+| Tempo | Speed of the track in BPM |
 
-## 📂 Files
+## 📂 Project Structure
 
 | File | Description |
 |------|-------------|
-| `pre.ipynb` | Main Jupyter notebook with the recommendation pipeline |
-| `dataset.csv` | Large song dataset with audio features *(not included in repo — too large)* |
+| `app.py` | Streamlit web app |
+| `pre.ipynb` | Jupyter notebook with the recommendation pipeline |
+| `spotify_tracks.csv` | Song dataset with audio features (~62K tracks) |
+| `requirements.txt` | Python dependencies |
 
 ## ⚙️ Setup
 
-1. Install dependencies:
-   ```
-   pip install pandas scikit-learn spotipy numpy
-   ```
-
-2. Set your Spotify API credentials in the notebook:
-   ```python
-   client_id = "YOUR_CLIENT_ID"
-   client_secret = "YOUR_CLIENT_SECRET"
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/skillissueseverytime/Song-recommender.git
+   cd Song-recommender
    ```
 
-3. Set your playlist ID:
-   ```python
-   playlist_id = "YOUR_PLAYLIST_ID"
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
    ```
 
-4. Download the dataset and place it as `dataset.csv` in the same directory.
-
-5. Run all cells in `pre.ipynb`.
+3. Run the app:
+   ```bash
+   streamlit run app.py
+   ```
 
 ## 📊 Dataset
 
-The dataset (`dataset.csv`) contains ~100K+ songs with pre-computed Spotify audio features. It is not included in this repository due to its size (~20MB). You can use any Spotify track dataset with the following columns:
-`track_id`, `track_name`, `artists`, `album_name`, `danceability`, `energy`, `loudness`, `speechiness`, `acousticness`, `instrumentalness`, `liveness`, `valence`, `tempo`
+The dataset (`spotify_tracks.csv`) contains ~62K songs with pre-computed Spotify audio features including:
+
+`track_id`, `track_name`, `artist_name`, `album_name`, `language`, `danceability`, `energy`, `loudness`, `speechiness`, `acousticness`, `instrumentalness`, `liveness`, `valence`, `tempo`
+
+## 🛠️ Tech Stack
+
+- **Python** — Core language
+- **Streamlit** — Web UI
+- **pandas** — Data processing
+- **scikit-learn** — Cosine similarity
+- **difflib** — Fuzzy matching for search suggestions
