@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# ── Custom CSS ────────────────────────────────────────────────────────────────
+# ── Custom CSS (Black Theme) ──────────────────────────────────────────────────
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -22,39 +22,39 @@ st.markdown("""
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
     .stApp {
-        background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+        background: #000000;
         min-height: 100vh;
+        color: #ffffff;
     }
 
     /* Main card */
     .main-card {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 20px;
+        background: #0a0a0a;
+        border: 1px solid #1f1f1f;
+        border-radius: 16px;
         padding: 2.5rem;
-        backdrop-filter: blur(10px);
         margin-bottom: 1.5rem;
     }
 
     /* Song result card */
     .song-card {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(138,43,226,0.3);
-        border-radius: 14px;
+        background: #0a0a0a;
+        border: 1px solid #1f1f1f;
+        border-radius: 12px;
         padding: 1rem 1.4rem;
         margin-bottom: 0.7rem;
         transition: all 0.2s ease;
         cursor: default;
     }
     .song-card:hover {
-        border-color: rgba(138,43,226,0.8);
-        background: rgba(138,43,226,0.1);
+        border-color: #333333;
+        background: #111111;
         transform: translateX(4px);
     }
     .song-rank {
         font-size: 1.1rem;
         font-weight: 700;
-        color: #9b59b6;
+        color: #666666;
         min-width: 2rem;
         display: inline-block;
     }
@@ -65,7 +65,7 @@ st.markdown("""
     }
     .song-artist {
         font-size: 0.82rem;
-        color: rgba(255,255,255,0.55);
+        color: #888888;
         margin-top: 0.15rem;
     }
 
@@ -73,42 +73,42 @@ st.markdown("""
     .hero-title {
         font-size: 2.8rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #a855f7, #6366f1, #3b82f6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #ffffff;
         line-height: 1.2;
     }
     .hero-sub {
-        color: rgba(255,255,255,0.55);
+        color: #888888;
         font-size: 1.05rem;
         margin-top: 0.4rem;
     }
 
     /* Tab styling */
     .stTabs [data-baseweb="tab-list"] {
-        background: rgba(255,255,255,0.05);
+        background: #0a0a0a;
         border-radius: 12px;
         padding: 4px;
         gap: 4px;
+        border-bottom: none;
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 10px;
         padding: 0.5rem 1.2rem;
-        color: rgba(255,255,255,0.6);
+        color: #888888;
         font-weight: 500;
+        border: none !important;
+        background: transparent;
     }
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #a855f7, #6366f1) !important;
-        color: white !important;
+        background: #ffffff !important;
+        color: #000000 !important;
     }
 
     /* Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #a855f7, #6366f1);
-        color: white;
+        background: #ffffff;
+        color: #000000;
         border: none;
-        border-radius: 12px;
+        border-radius: 8px;
         padding: 0.65rem 2rem;
         font-weight: 600;
         font-size: 1rem;
@@ -116,16 +116,27 @@ st.markdown("""
         transition: all 0.2s ease;
     }
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(138,43,226,0.4);
+        background: #dddddd;
+        color: #000000;
+        transform: translateY(-1px);
+    }
+    
+    /* Secondary Button variant (used for some internal buttons) */
+    .stButton > button[kind="secondary"] {
+        background: #1f1f1f;
+        color: #ffffff;
+    }
+    .stButton > button[kind="secondary"]:hover {
+        background: #333333;
+        color: #ffffff;
     }
 
     /* Inputs */
     .stTextInput > div > div > input,
     .stSelectbox > div > div {
-        background: rgba(255,255,255,0.07) !important;
-        border: 1px solid rgba(255,255,255,0.15) !important;
-        border-radius: 10px !important;
+        background: #0a0a0a !important;
+        border: 1px solid #333333 !important;
+        border-radius: 8px !important;
         color: white !important;
     }
 
@@ -134,14 +145,16 @@ st.markdown("""
 
     .badge {
         display: inline-block;
-        background: rgba(138,43,226,0.2);
-        border: 1px solid rgba(138,43,226,0.5);
-        color: #c084fc;
+        background: #111111;
+        border: 1px solid #333333;
+        color: #aaaaaa;
         font-size: 0.72rem;
-        padding: 2px 10px;
+        padding: 4px 12px;
         border-radius: 20px;
         font-weight: 600;
         margin-bottom: 1.2rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -176,6 +189,10 @@ FEATURES = [
 
 sp = get_spotify()
 df = load_dataset()
+
+# ── Session State initialization for Single Song Search ──
+if "search_results" not in st.session_state:
+    st.session_state.search_results = None
 
 
 # ── Helper functions ──────────────────────────────────────────────────────────
@@ -223,12 +240,12 @@ def search_song(name, artist=""):
 
 
 # ── UI ────────────────────────────────────────────────────────────────────────
-st.markdown('<div class="badge">🎛️ ML-Powered</div>', unsafe_allow_html=True)
+st.markdown('<div class="badge">ML-Powered</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Song Recommender</div>', unsafe_allow_html=True)
-st.markdown('<div class="hero-sub">Discover music that matches your vibe using cosine similarity on Spotify audio features</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-sub">Discover music that matches your vibe using cosine similarity on Spotify audio features.</div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
-tab1, tab2 = st.tabs(["🎵 Single Song", "📋 Playlist"])
+tab1, tab2 = st.tabs(["Single Song", "Spotify Playlist"])
 
 # ───────────────── TAB 1: SINGLE SONG ─────────────────
 with tab1:
@@ -237,31 +254,38 @@ with tab1:
 
     col1, col2 = st.columns([2, 1])
     with col1:
-        song_name = st.text_input("🎤 Song Name", placeholder="e.g. Brown Munde")
+        song_name = st.text_input("Song Name", placeholder="e.g. Brown Munde", label_visibility="collapsed")
     with col2:
-        artist_name = st.text_input("👤 Artist (optional)", placeholder="e.g. AP Dhillon")
+        artist_name = st.text_input("Artist (optional)", placeholder="e.g. AP Dhillon", label_visibility="collapsed")
 
-    search_clicked = st.button("🔍 Search Song", key="search_btn")
+    search_clicked = st.button("Search Song")
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Note: Using session state because Streamlit reruns on every button click. 
+    # If we don't save search_results, the second button click (Get Recommendations) 
+    # will wipe out the search results.
     if search_clicked and song_name:
         with st.spinner("Searching Spotify..."):
-            tracks = search_song(song_name, artist_name)
-
-        if not tracks:
-            st.error("❌ No song found. Try a different name.")
+            st.session_state.search_results = search_song(song_name, artist_name)
+    
+    # If we have search results stored in session state, display them
+    if st.session_state.search_results is not None:
+        if len(st.session_state.search_results) == 0:
+            st.error("No song found. Try a different name.")
         else:
-            st.markdown("**Select the correct song:**")
+            st.markdown("##### Select the correct song:")
             options = {
                 f"{t['name']} — {', '.join(a['name'] for a in t['artists'])}": t
-                for t in tracks
+                for t in st.session_state.search_results
             }
-            chosen_label = st.selectbox("", list(options.keys()), label_visibility="collapsed")
+            
+            # Show a selectbox and the recommend button
+            chosen_label = st.selectbox("Select match", list(options.keys()), label_visibility="collapsed")
             chosen = options[chosen_label]
             chosen_id = chosen["id"]
             chosen_name = chosen["name"]
 
-            if st.button("🎧 Get Recommendations", key="rec_btn"):
+            if st.button("Get Recommendations", type="primary"):
                 with st.spinner("Finding similar songs..."):
                     matched = df[df["track_id"] == chosen_id]
                     if matched.empty:
@@ -278,7 +302,7 @@ with tab1:
                         for i, row in recs.iterrows():
                             st.markdown(f"""
                             <div class="song-card">
-                                <span class="song-rank">#{i+1}</span>&nbsp;&nbsp;
+                                <span class="song-rank">{i+1}</span>&nbsp;&nbsp;
                                 <span class="song-name">{row['track_name'].title()}</span>
                                 <div class="song-artist" style="padding-left:2.5rem">
                                     {row['artists'].title()} &nbsp;·&nbsp; {row['album_name'].title()}
@@ -291,13 +315,13 @@ with tab2:
     st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.markdown("#### Paste your Spotify Playlist ID")
     st.markdown(
-        '<small style="color:rgba(255,255,255,0.4)">Open playlist on Spotify → Share → Copy link → '
+        '<small style="color:#888888">Open playlist on Spotify → Share → Copy link → '
         'grab the ID after <code>/playlist/</code></small>',
         unsafe_allow_html=True
     )
 
-    playlist_id = st.text_input("🔗 Playlist ID", placeholder="e.g. 7zXhVAENGtOlG6Mnwk7bwv", label_visibility="collapsed")
-    playlist_btn = st.button("🎶 Recommend from Playlist", key="playlist_btn")
+    playlist_id = st.text_input("Playlist ID", placeholder="e.g. 7zXhVAENGtOlG6Mnwk7bwv", label_visibility="collapsed")
+    playlist_btn = st.button("Recommend from Playlist")
     st.markdown('</div>', unsafe_allow_html=True)
 
     if playlist_btn and playlist_id:
@@ -315,7 +339,7 @@ with tab2:
                     for i, row in recs.iterrows():
                         st.markdown(f"""
                         <div class="song-card">
-                            <span class="song-rank">#{i+1}</span>&nbsp;&nbsp;
+                            <span class="song-rank">{i+1}</span>&nbsp;&nbsp;
                             <span class="song-name">{row['track_name'].title()}</span>
                             <div class="song-artist" style="padding-left:2.5rem">
                                 {row['artists'].title()} &nbsp;·&nbsp; {row['album_name'].title()}
