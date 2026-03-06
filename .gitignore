@@ -9,8 +9,8 @@ __pycache__/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
-# Large dataset files (too large for GitHub)
-dataset.csv
+# Large dataset files
+# (Removed dataset.csv so it can be pushed for Streamlit Cloud since it's only 20MB)
 
 # Generated CSV output files (runtime artifacts)
 filtered_playlist_songs.csv
