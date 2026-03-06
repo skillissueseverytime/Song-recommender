@@ -230,10 +230,18 @@ def fetch_playlist_songs(playlist_id):
     try:
         results = sp.playlist_items(playlist_id)
     except spotipy.exceptions.SpotifyException as e:
+        import traceback
+        st.error(f"❌ Detailed Spotify API Error for ID '{playlist_id}':")
+        st.code(traceback.format_exc(), language="python")
         if e.http_status == 404:
             raise ValueError("Playlist not found! Make sure the playlist is PUBLIC, not private.")
         else:
             raise ValueError(f"Spotify API Error: {e.msg}")
+    except Exception as e:
+        import traceback
+        st.error(f"❌ Unexpected error for ID '{playlist_id}':")
+        st.code(traceback.format_exc(), language="python")
+        raise e
             
     songs = []
     for item in results["items"]:
