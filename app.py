@@ -1,4 +1,5 @@
 import os
+import re
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -25,15 +26,6 @@ st.markdown("""
         background: #000000;
         min-height: 100vh;
         color: #ffffff;
-    }
-
-    /* Main card */
-    .main-card {
-        background: #0a0a0a;
-        border: 1px solid #1f1f1f;
-        border-radius: 16px;
-        padding: 2.5rem;
-        margin-bottom: 1.5rem;
     }
 
     /* Song result card */
@@ -80,6 +72,7 @@ st.markdown("""
         color: #888888;
         font-size: 1.05rem;
         margin-top: 0.4rem;
+        margin-bottom: 1.5rem;
     }
 
     /* Tab styling */
@@ -103,6 +96,15 @@ st.markdown("""
         color: #000000 !important;
     }
 
+    /* Container generic styling */
+    [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
+        background: #0a0a0a;
+        border: 1px solid #1f1f1f;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
     /* Buttons */
     .stButton > button {
         background: #ffffff;
@@ -119,16 +121,6 @@ st.markdown("""
         background: #dddddd;
         color: #000000;
         transform: translateY(-1px);
-    }
-    
-    /* Secondary Button variant (used for some internal buttons) */
-    .stButton > button[kind="secondary"] {
-        background: #1f1f1f;
-        color: #ffffff;
-    }
-    .stButton > button[kind="secondary"]:hover {
-        background: #333333;
-        color: #ffffff;
     }
 
     /* Inputs */
@@ -196,6 +188,29 @@ if "search_results" not in st.session_state:
 
 
 # ── Helper functions ──────────────────────────────────────────────────────────
+def extract_id_from_url(url, type_of_id="playlist"):
+    """
+    Extracts the Spotify ID from a URL or raw ID string.
+    type_of_id should be 'playlist' or 'track'
+    """
+    url = url.strip()
+    if not url:
+        return ""
+    
+    # Check if it's already just an ID (no slashes)
+    if "/" not in url and "?" not in url:
+        return url
+        
+    # Example URL: https://open.spotify.com/playlist/7zX...
+    # Example URL: https://open.spotify.com/track/0XwR...
+    pattern = rf"spotify\.com/{type_of_id}/([a-zA-Z0-9]+)"
+    match = re.search(pattern, url)
+    if match:
+        return match.group(1)
+        
+    return url # Fallback to raw input
+
+
 def recommend_from_vector(seed_vector, exclude_ids, top_n=10):
     """Given a feature vector (1, 9), return top_n similar songs excluding seed."""
     pool = df[~df["track_id"].isin(exclude_ids)].copy()
@@ -243,49 +258,73 @@ def search_song(name, artist=""):
 st.markdown('<div class="badge">ML-Powered</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-title">Song Recommender</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-sub">Discover music that matches your vibe using cosine similarity on Spotify audio features.</div>', unsafe_allow_html=True)
-st.markdown("<br>", unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["Single Song", "Spotify Playlist"])
 
 # ───────────────── TAB 1: SINGLE SONG ─────────────────
 with tab1:
-    st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    st.markdown("#### Enter a song to get similar recommendations")
+    with st.container():
+        st.markdown("#### Search or paste a Track Link")
+        song_input = st.text_input("Song Name or Spotify URL", placeholder="e.g. Brown Munde OR https://open.spotify.com/track/...", label_visibility="collapsed")
+        
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            get_rec_click = st.button("Get Recommendations")
 
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        song_name = st.text_input("Song Name", placeholder="e.g. Brown Munde", label_visibility="collapsed")
-    with col2:
-        artist_name = st.text_input("Artist (optional)", placeholder="e.g. AP Dhillon", label_visibility="collapsed")
+    # If the user pasted a Spotify URL, bypass search and go straight to recommending
+    if get_rec_click and song_input:
+        if "spotify.com/track/" in song_input:
+            track_id = extract_id_from_url(song_input, "track")
+            with st.spinner("Finding similar songs..."):
+                try:
+                    track_info = sp.track(track_id)
+                    chosen_name = track_info["name"]
+                    
+                    matched = df[df["track_id"] == track_id]
+                    if matched.empty:
+                        matched = df[df["track_name"] == chosen_name.lower()]
 
-    search_clicked = st.button("Search Song")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Note: Using session state because Streamlit reruns on every button click. 
-    # If we don't save search_results, the second button click (Get Recommendations) 
-    # will wipe out the search results.
-    if search_clicked and song_name:
-        with st.spinner("Searching Spotify..."):
-            st.session_state.search_results = search_song(song_name, artist_name)
-    
-    # If we have search results stored in session state, display them
-    if st.session_state.search_results is not None:
+                    if matched.empty:
+                        st.warning(f"⚠️ **{chosen_name}** isn't in the local dataset. Try searching by name or pasting another song.")
+                    else:
+                        seed_vector = matched.iloc[[0]][FEATURES].values
+                        recs = recommend_from_vector(seed_vector, [track_id])
+                        st.success(f"Top 10 songs similar to **{chosen_name}**")
+                        for i, row in recs.iterrows():
+                            st.markdown(f"""
+                            <div class="song-card">
+                                <span class="song-rank">{i+1}</span>&nbsp;&nbsp;
+                                <span class="song-name">{row['track_name'].title()}</span>
+                                <div class="song-artist" style="padding-left:2.5rem">
+                                    {row['artists'].title()} &nbsp;·&nbsp; {row['album_name'].title()}
+                                </div>
+                            </div>""", unsafe_allow_html=True)
+                except Exception as e:
+                    st.error("Invalid Spotify Track URL.")
+                    
+        # Otherwise, they entered a search querying text (e.g. "Brown Munde")
+        else:
+            with st.spinner("Searching Spotify..."):
+                # Clear previous search results so we do a fresh search
+                st.session_state.search_results = search_song(song_input)
+                
+    # If we have search results stored in session state, display them so the user can pick
+    if st.session_state.search_results is not None and "spotify.com/track/" not in str(song_input):
         if len(st.session_state.search_results) == 0:
             st.error("No song found. Try a different name.")
         else:
-            st.markdown("##### Select the correct song:")
+            st.markdown("##### 🔍 Select the correct match:")
             options = {
                 f"{t['name']} — {', '.join(a['name'] for a in t['artists'])}": t
                 for t in st.session_state.search_results
             }
             
-            # Show a selectbox and the recommend button
             chosen_label = st.selectbox("Select match", list(options.keys()), label_visibility="collapsed")
             chosen = options[chosen_label]
             chosen_id = chosen["id"]
             chosen_name = chosen["name"]
 
-            if st.button("Get Recommendations", type="primary"):
+            if st.button("Confirm & Recommend", type="primary"):
                 with st.spinner("Finding similar songs..."):
                     matched = df[df["track_id"] == chosen_id]
                     if matched.empty:
@@ -312,22 +351,21 @@ with tab1:
 
 # ───────────────── TAB 2: PLAYLIST ─────────────────
 with tab2:
-    st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    st.markdown("#### Paste your Spotify Playlist ID")
-    st.markdown(
-        '<small style="color:#888888">Open playlist on Spotify → Share → Copy link → '
-        'grab the ID after <code>/playlist/</code></small>',
-        unsafe_allow_html=True
-    )
+    with st.container():
+        st.markdown("#### Paste your Spotify Playlist Link")
+        st.markdown(
+            '<small style="color:#888888">Open playlist on Spotify → Share → Copy link</small>',
+            unsafe_allow_html=True
+        )
 
-    playlist_id = st.text_input("Playlist ID", placeholder="e.g. 7zXhVAENGtOlG6Mnwk7bwv", label_visibility="collapsed")
-    playlist_btn = st.button("Recommend from Playlist")
-    st.markdown('</div>', unsafe_allow_html=True)
+        playlist_input = st.text_input("Playlist URL", placeholder="https://open.spotify.com/playlist/...", label_visibility="collapsed")
+        playlist_btn = st.button("Recommend from Playlist")
 
-    if playlist_btn and playlist_id:
+    if playlist_btn and playlist_input:
+        playlist_id = extract_id_from_url(playlist_input, "playlist")
         with st.spinner("Fetching playlist & computing recommendations..."):
             try:
-                playlist_df, matched = fetch_playlist_songs(playlist_id.strip())
+                playlist_df, matched = fetch_playlist_songs(playlist_id)
                 if matched.empty:
                     st.warning("⚠️ No songs from your playlist were found in the local dataset.")
                 else:
@@ -347,4 +385,5 @@ with tab2:
                         </div>""", unsafe_allow_html=True)
 
             except Exception as e:
-                st.error(f"❌ Error: {e}")
+                import traceback
+                st.error("Invalid Playlist URL or Spotify API error.")
