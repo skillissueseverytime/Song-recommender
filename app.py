@@ -251,7 +251,7 @@ with st.container():
     )
     artist_input = st.text_input(
         "Artist name (optional)",
-        placeholder="Artist name (optional, press Enter to skip)",
+        placeholder="Artist name (optional)",
         label_visibility="collapsed"
     )
 
