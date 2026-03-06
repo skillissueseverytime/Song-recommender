@@ -215,20 +215,25 @@ if get_rec_click and song_input:
             # Filter by same language
             filtered_df = df[df["language"] == song_language]
 
-            # Exclude the chosen song itself
+            # Exclude the chosen song by track_id and any name variants
+            input_base_name = matched.iloc[0]["track_name"].split("(")[0].strip()
             other_songs = filtered_df[
-                filtered_df["track_name"] != matched.iloc[0]["track_name"]
+                (filtered_df["track_id"] != matched.iloc[0]["track_id"]) &
+                (~filtered_df["track_name"].str.startswith(input_base_name, na=False))
             ].copy()
 
             other_features = other_songs[features].values
 
             sim_scores = cosine_similarity(song_vector, other_features)[0]
 
-            top_idx = np.argsort(sim_scores)[::-1][1:11]
+            top_idx = np.argsort(sim_scores)[::-1][:30]
 
-            recommendations = other_songs.iloc[top_idx][
+            candidates = other_songs.iloc[top_idx][
                 ["track_name", "artist_name", "album_name"]
-            ].drop_duplicates(subset=["track_name"]).head(10).reset_index(drop=True)
+            ].copy()
+            # Normalize track names for dedup (strip parenthetical suffixes)
+            candidates["_base_name"] = candidates["track_name"].str.split("(").str[0].str.strip()
+            recommendations = candidates.drop_duplicates(subset=["_base_name"]).drop(columns=["_base_name"]).head(10).reset_index(drop=True)
 
             st.markdown(
                 f"#### 🎧 Top 10 songs similar to "
