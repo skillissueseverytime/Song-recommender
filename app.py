@@ -217,16 +217,13 @@ def extract_id_from_url(url, type_of_id="playlist"):
     if not url:
         return ""
     
-    # Example URL: https://open.spotify.com/playlist/7zX...
-    # Example URL: https://open.spotify.com/track/0XwR...
-    pattern = rf"spotify\.com/{type_of_id}/([a-zA-Z0-9]+)"
-    match = re.search(pattern, url)
-    if match:
-        return match.group(1)
+    # If they pasted a full URL
+    if type_of_id in url:
+        # e.g. "https://open.spotify.com/playlist/7zXhVA..."
+        url = url.split(f"{type_of_id}/")[-1]
         
-    # If it's just a raw ID like 1y1JSEK3NVTzdM5YSed53Q or 1y1JSEK3NVTzdM5YSed53Q?si=...
-    # Strip any parameters after '?' or spaces
-    url = url.split("?")[0].split(" ")[0]
+    # Now URL is just the ID onwards. Strip out query parameters and anything else
+    url = url.split("?")[0].split("&")[0].split("/")[0].strip()
     return url
 
 
