@@ -156,22 +156,9 @@ st.markdown("""
 load_dotenv()
 
 def get_spotify():
-    # Try fetching from os.environ first, then fallback to Streamlit secrets
-    client_id = os.getenv("SPOTIFY_CLIENT_ID")
-    if not client_id and "SPOTIFY_CLIENT_ID" in st.secrets:
-        client_id = st.secrets["SPOTIFY_CLIENT_ID"]
-
-    client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
-    if not client_secret and "SPOTIFY_CLIENT_SECRET" in st.secrets:
-        client_secret = st.secrets["SPOTIFY_CLIENT_SECRET"]
-
-    if not client_id or not client_secret:
-        st.error("❌ API Keys missing! Please add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET to Streamlit Secrets.")
-        st.stop()
-        
-    client_id = str(client_id).strip()
-    client_secret = str(client_secret).strip()
-
+    client_id     = 'ab30884cbf2b41fda2e26aab4e3a7751'
+    client_secret = '06885b40fc684369a94080c5b1d87d45'
+    
     from spotipy.cache_handler import MemoryCacheHandler
     
     # Do not cache this on disk, to prevent stale tokens across Streamlit reruns
